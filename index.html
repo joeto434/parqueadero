@@ -351,8 +351,13 @@
         // --- LÓGICA DE REPORTE ---
         async function generateDailyReport() {
             const today = new Date();
-            const startOfDay = new Date(today.setHours(0, 0, 0, 0));
-            const q = query(historyCollectionRef, where("exitTime", ">=", Timestamp.fromDate(startOfDay)));
+            const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 0, 0, 0);
+            const endOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 23, 59, 59);
+
+            const q = query(historyCollectionRef, 
+                where("exitTime", ">=", Timestamp.fromDate(startOfDay)),
+                where("exitTime", "<=", Timestamp.fromDate(endOfDay))
+            );
 
             const snapshot = await getDocs(q);
             if (snapshot.empty) { showErrorModal("No hay salidas registradas hoy."); return; }
@@ -377,7 +382,7 @@
             // Usa punto y coma (;) como separador para compatibilidad con Excel en español.
             const separator = ';';
             const headers = Object.keys(rows[0]).join(separator);
-            const csvContent = "data:text/csv;charset=utf-8," + headers + '\n' 
+            const csvContent = "data:text/csv;charset=utf-8,\uFEFF" + headers + '\n' 
                 + rows.map(r => Object.values(r).map(v => `"${(v || '').toString().replace(/"/g, '""')}"`).join(separator)).join('\n');
             
             const link = document.createElement("a");
@@ -473,4 +478,4 @@
         main();
     </script>
 </body>
-</html>
+</ht
