@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Control de Parqueadero ICTI</title>
+
+    <!-- === MEJORAS PARA LA EXPERIENCIA DE APP MÓVIL === -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#c00000">
+    <link rel="apple-touch-icon" href="logo.png">
+    <link rel="icon" href="logo.png">
+    <link rel="manifest" href="data:application/manifest+json,{
+        &quot;name&quot;: &quot;Control Parqueadero ICTI&quot;,
+        &quot;short_name&quot;: &quot;Parqueadero&quot;,
+        &quot;start_url&quot;: &quot;.&quot;,
+        &quot;display&quot;: &quot;standalone&quot;,
+        &quot;background_color&quot;: &quot;#f0f2f5&quot;,
+        &quot;theme_color&quot;: &quot;#c00000&quot;,
+        &quot;description&quot;: &quot;App para controlar la entrada y salida de vehículos.&quot;,
+        &quot;icons&quot;: [
+            { &quot;src&quot;: &quot;logo.png&quot;, &quot;sizes&quot;: &quot;192x192&quot;, &quot;type&quot;: &quot;image/png&quot; },
+            { &quot;src&quot;: &quot;logo.png&quot;, &quot;sizes&quot;: &quot;512x512&quot;, &quot;type&quot;: &quot;image/png&quot; }
+        ]
+    }">
+    <!-- === FIN DE LAS MEJORAS === -->
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts: Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Scripts de React y Lucide (ORDEN CORREGIDO) -->
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/lucide-react@latest/dist/lucide-react.js"></script>
+    
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f0f2f5; }
+        .auth-screen { min-height: 100vh; }
+        /* Switch para "Deja Llaves" */
+        .switch { position: relative; display: inline-block; width: 60px; height: 34px; }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #ccc; transition: .4s; border-radius: 34px; }
+        .slider:before { position: absolute; content: ""; height: 26px; width: 26px; left: 4px; bottom: 4px; background-color: white; transition: .4s; border-radius: 50%; }
+        input:checked + .slider { background-color: #4f46e5; }
+        input:checked + .slider:before { transform: translateX(26px); }
+    </style>
+</head>
+<body class="bg-gray-100 text-gray-800">
+
+    <!-- Pantalla de Login -->
+    <div id="auth-container" class="flex items-center justify-center auth-screen">
+        <div class="w-full max-w-md p-8 space-y-6 bg-white rounded-2xl shadow-lg">
+            <div>
+                <img class="mx-auto h-20 w-auto" src="logo.png" alt="Logo del Parqueadero">
+                <h2 class="mt-6 text-center text-3xl font-extrabold text-gray-900">Iniciar Sesión</h2>
+                <p class="mt-2 text-center text-sm text-gray-600">
+                    Accede al panel de control del parqueadero.
+                </p>
+            </div>
+            <form id="loginForm" class="space-y-6">
+                <div>
+                    <label for="email" class="sr-only">Correo Electrónico</label>
+                    <input id="email" name="email" type="email" autocomplete="email" required class="appearance-none rounded-md relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" placeholder="Correo Electrónico">
+                </div>
+                <div>
+                    <label for="password" class="sr-only">Contraseña</label>
+                    <input id="password" name="password" type="password" autocomplete="current-password" required class="appearance-none rounded-md relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" placeholder="Contraseña">
+                </div>
+                <button type="submit" id="loginBtn" class="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                    Iniciar Sesión
+                </button>
+            </form>
+            <p class="mt-2 text-center text-xs text-gray-500">
+                <a href="#" id="showRegister" class="font-medium text-indigo-600 hover:text-indigo-500">¿No tienes cuenta? Regístra el parqueadero aquí</a>
+            </p>
+        </div>
+    </div>
+    
+     <!-- Pantalla de Registro -->
+    <div id="register-container" class="hidden flex items-center justify-center auth-screen">
+        <div class="w-full max-w-md p-8 space-y-6 bg-white rounded-2xl shadow-lg">
+             <h2 class="mt-6 text-center text-3xl font-extrabold text-gray-900">Registrar Parqueadero</h2>
+             <p class="mt-2 text-center text-sm text-gray-600">Crea una cuenta única para tu negocio. Todos los empleados usarán esta cuenta.</p>
+            <form id="registerForm" class="space-y-6">
+                <input id="registerEmail" type="email" required placeholder="Correo del Negocio" class="w-full px-3 py-2 border rounded-md">
+                <input id="registerPassword" type="password" required placeholder="Crea una Contraseña" class="w-full px-3 py-2 border rounded-md">
+                <button type="submit" id="registerBtn" class="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700">Crear Cuenta</button>
+            </form>
+            <p class="mt-2 text-center text-xs text-gray-500">
+                <a href="#" id="showLogin" class="font-medium text-indigo-600 hover:text-indigo-500">¿Ya tienes cuenta? Inicia sesión</a>
+            </p>
+        </div>
+    </div>
+
+
+    <!-- Contenido Principal de la App (Oculto al inicio) -->
+    <div id="app-container" class="hidden">
+        <header class="bg-white shadow-md p-4 flex justify-between items-center">
+            <h1 class="text-xl font-bold text-gray-800">Panel de Control del Parqueadero</h1>
+            <button id="logoutBtn" class="text-sm font-medium text-red-600 hover:text-red-800 flex items-center">
+                <span class="lucide-icon" data-lucide="log-out"></span>&nbsp;Cerrar Sesión
+            </button>
+        </header>
+
+        <div class="container mx-auto p-4 md:p-6 lg:p-8">
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                <!-- Columna de Registro -->
+                <div class="lg:col-span-1 space-y-6">
+                    <div class="bg-white p-6 rounded-2xl shadow-lg">
+                        <h2 class="text-2xl font-semibold mb-4 flex items-center"><span class="lucide-icon" data-lucide="log-in"></span> Registrar Entrada</h2>
+                        <form id="entryForm" class="space-y-4">
+                            <!-- ... campos del formulario ... -->
+                            <div class="grid grid-cols-2 gap-4">
+                                <div><label for="plate" class="block text-sm font-medium">Placa</label><input type="text" id="plate" name="plate" required class="mt-1 w-full p-2 border rounded-md" placeholder="AAA-123"></div>
+                                <div><label for="type" class="block text-sm font-medium">Tipo</label><select id="type" name="type" class="mt-1 w-full p-2 border rounded-md"><option value="car">Carro</option><option value="motorcycle">Moto</option></select></div>
+                            </div>
+                            <div><label for="ownerName" class="block text-sm font-medium">Nombre Conductor</label><input type="text" id="ownerName" name="ownerName" required class="mt-1 w-full p-2 border rounded-md" placeholder="Juan Pérez"></div>
+                            <div><label for="ownerPhone" class="block text-sm font-medium">Celular (Opcional)</label><input type="tel" id="ownerPhone" name="ownerPhone" class="mt-1 w-full p-2 border rounded-md" placeholder="3001234567"></div>
+                            <div><label for="observations" class="block text-sm font-medium">Novedades</label><textarea id="observations" name="observations" rows="3" class="mt-1 w-full p-2 border rounded-md"></textarea></div>
+                            <div class="flex justify-between items-center pt-2">
+                                <label for="leavesKeys" class="font-medium text-gray-700">¿Deja llaves?</label>
+                                <label class="switch"><input type="checkbox" id="leavesKeys" name="leavesKeys"><span class="slider"></span></label>
+                            </div>
+                            <button type="submit" id="submitBtn" class="w-full bg-blue-600 text-white font-bold py-2 px-4 rounded-lg flex items-center justify-center">
+                                <span class="lucide-icon" data-lucide="plus-circle"></span>&nbsp;Añadir Vehículo
+                            </button>
+                        </form>
+                    </div>
+                     <div class="bg-white p-6 rounded-2xl shadow-lg">
+                        <h3 class="text-xl font-semibold mb-4 flex items-center"><span class="lucide-icon" data-lucide="settings-2"></span> Acciones</h3>
+                        <button id="exportBtn" class="w-full bg-green-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-green-700 flex items-center justify-center">
+                            <span class="lucide-icon" data-lucide="file-spreadsheet"></span>&nbsp;Exportar Reporte Diario
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Columna de Vehículos Estacionados -->
+                <div class="lg:col-span-2">
+                     <div class="bg-white p-6 rounded-2xl shadow-lg min-h-[400px]">
+                        <h2 class="text-2xl font-semibold mb-4 flex items-center">
+                             <span class="lucide-icon" data-lucide="car"></span>&nbsp;Vehículos Estacionados (<span id="vehicleCount">0</span>)
+                        </h2>
+                        <div id="vehiclesList" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-2 gap-4"></div>
+                         <div id="emptyState" class="hidden text-center py-16">
+                            <span class="lucide-icon" data-lucide="parking-circle-off" class="mx-auto h-16 w-16 text-gray-300"></span>
+                            <h3 class="mt-4 text-lg font-medium text-gray-800">Parqueadero Vacío</h3>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Modal genérico -->
+    <div id="modal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-75 z-50 flex items-center justify-center p-4">
+        <div id="modal-container" class="relative bg-white rounded-2xl shadow-lg w-full max-w-md"></div>
+    </div>
+
+
+    <!-- Firebase SDK -->
+    <script type="module">
+        // Importar funciones de Firebase
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, setPersistence, browserLocalPersistence, onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, doc, addDoc, onSnapshot, deleteDoc, query, where, getDocs, serverTimestamp, Timestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        
+        // --- CONFIGURACIÓN ---
+        const firebaseConfig = {
+          apiKey: "AIzaSyDtdGTae_t4vOGGmYDK5AaKRZA5hHNo3Ng",
+          authDomain: "transformation-parking.firebaseapp.com",
+          projectId: "transformation-parking",
+          storageBucket: "transformation-parking.appspot.com",
+          messagingSenderId: "911384997480",
+          appId: "1:911384997480:web:24ca03e41b5b9bca91d5dd",
+          measurementId: "G-GXF3QM2MBZ"
+        };
+
+        // --- INICIALIZACIÓN DE FIREBASE ---
+        let app, auth, db;
+        let vehiclesCollectionRef, historyCollectionRef;
+
+        // --- ELEMENTOS DEL DOM ---
+        const DOMElements = {
+            authContainer: document.getElementById('auth-container'),
+            registerContainer: document.getElementById('register-container'),
+            appContainer: document.getElementById('app-container'),
+            loginForm: document.getElementById('loginForm'),
+            registerForm: document.getElementById('registerForm'),
+            showRegister: document.getElementById('showRegister'),
+            showLogin: document.getElementById('showLogin'),
+            logoutBtn: document.getElementById('logoutBtn'),
+            entryForm: document.getElementById('entryForm'),
+            submitBtn: document.getElementById('submitBtn'),
+            exportBtn: document.getElementById('exportBtn'),
+            vehiclesList: document.getElementById('vehiclesList'),
+            vehicleCount: document.getElementById('vehicleCount'),
+            emptyState: document.getElementById('emptyState'),
+            modal: document.getElementById('modal'),
+            modalContainer: document.getElementById('modal-container'),
+        };
+
+        // --- FUNCIONES DE MODAL ---
+        function showModal(content, maxWidth = 'max-w-md') {
+            DOMElements.modalContainer.className = `relative bg-white rounded-2xl shadow-lg w-full ${maxWidth}`;
+            DOMElements.modalContainer.innerHTML = content;
+            DOMElements.modal.classList.remove('hidden');
+            renderIcons();
+            document.getElementById('close-modal-btn')?.addEventListener('click', () => DOMElements.modal.classList.add('hidden'));
+        }
+
+        function showErrorModal(message) {
+            const content = `<div class="p-5 text-center"><div class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100"><span class="lucide-icon" data-lucide="alert-triangle" class="h-6 w-6 text-red-600"></span></div><h3 class="text-lg font-medium text-gray-900 mt-2">Error</h3><p class="mt-2 text-sm text-gray-500">${message}</p><div class="mt-4"><button id="close-modal-btn" class="px-4 py-2 bg-red-600 text-white rounded-md w-full">Entendido</button></div></div>`;
+            showModal(content);
+        }
+
+        // --- LÓGICA DE AUTENTICACIÓN ---
+        function setupAuthListeners() {
+            DOMElements.loginForm.addEventListener('submit', handleLogin);
+            DOMElements.registerForm.addEventListener('submit', handleRegister);
+            DOMElements.logoutBtn.addEventListener('click', handleLogout);
+            DOMElements.showRegister.addEventListener('click', (e) => { e.preventDefault(); toggleAuthForms(true); });
+            DOMElements.showLogin.addEventListener('click', (e) => { e.preventDefault(); toggleAuthForms(false); });
+        }
+        
+        function toggleAuthForms(showRegister) {
+            DOMElements.authContainer.classList.toggle('hidden', showRegister);
+            DOMElements.registerContainer.classList.toggle('hidden', !showRegister);
+        }
+
+        async function handleLogin(e) { e.preventDefault();
+            const email = DOMElements.loginForm.email.value;
+            const password = DOMElements.loginForm.password.value;
+            try { await signInWithEmailAndPassword(auth, email, password); } 
+            catch (error) { showErrorModal(getAuthErrorMessage(error.code)); }
+        }
+        async function handleRegister(e) { e.preventDefault();
+            const email = DOMElements.registerForm.registerEmail.value;
+            const password = DOMElements.registerForm.registerPassword.value;
+            try { await createUserWithEmailAndPassword(auth, email, password); } 
+            catch (error) { showErrorModal(getAuthErrorMessage(error.code)); }
+        }
+        async function handleLogout() { await signOut(auth); }
+
+        function getAuthErrorMessage(code) {
+            switch(code) {
+                case 'auth/wrong-password': return 'Contraseña incorrecta. Inténtalo de nuevo.';
+                case 'auth/user-not-found': return 'No se encontró ninguna cuenta con este correo.';
+                case 'auth/invalid-email': return 'El formato del correo no es válido.';
+                case 'auth/weak-password': return 'La contraseña debe tener al menos 6 caracteres.';
+                case 'auth/email-already-in-use': return 'Este correo ya está registrado. Intenta iniciar sesión.';
+                default: return 'Ocurrió un error. Por favor, intenta de nuevo.';
+            }
+        }
+
+        // --- FUNCIÓN PRINCIPAL Y SETUP ---
+        async function main() {
+            try {
+                app = initializeApp(firebaseConfig);
+                auth = getAuth(app);
+                db = getFirestore(app);
+                await setPersistence(auth, browserLocalPersistence);
+                
+                onAuthStateChanged(auth, (user) => {
+                    if (user) {
+                        // Usuario ha iniciado sesión
+                        DOMElements.authContainer.classList.add('hidden');
+                        DOMElements.registerContainer.classList.add('hidden');
+                        DOMElements.appContainer.classList.remove('hidden');
+                        // Todos los datos se guardan en una ruta compartida, no por usuario.
+                        vehiclesCollectionRef = collection(db, "parking-data/active/vehicles");
+                        historyCollectionRef = collection(db, "parking-data/history/records");
+                        listenForVehicles();
+                    } else {
+                        // Usuario no ha iniciado sesión
+                        DOMElements.authContainer.classList.remove('hidden');
+                        DOMElements.registerContainer.classList.remove('hidden'); // Ensure register is hidden too on logout
+                        DOMElements.appContainer.classList.add('hidden');
+                    }
+                     renderIcons();
+                });
+            } catch (error) {
+                document.body.innerHTML = 'Error crítico al inicializar la aplicación. Revisa la consola.';
+                console.error("Error inicializando Firebase:", error);
+            }
+            setupAuthListeners();
+            DOMElements.entryForm.addEventListener('submit', handleAddVehicle);
+            DOMElements.exportBtn.addEventListener('click', generateDailyReport);
+        }
+
+        // --- LÓGICA DE VEHÍCULOS ---
+        function listenForVehicles() {
+            if (!vehiclesCollectionRef) return;
+            onSnapshot(query(vehiclesCollectionRef), (snapshot) => {
+                const vehicles = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                renderVehicles(vehicles);
+            }, (error) => console.error("Error al obtener vehículos:", error));
+        }
+
+        async function handleAddVehicle(e) {
+            e.preventDefault();
+            const vehicleData = {
+                plate: document.getElementById('plate').value.toUpperCase().trim(),
+                type: document.getElementById('type').value,
+                ownerName: document.getElementById('ownerName').value.trim(),
+                ownerPhone: document.getElementById('ownerPhone').value.trim(),
+                observations: document.getElementById('observations').value.trim(),
+                leavesKeys: document.getElementById('leavesKeys').checked,
+                entryTime: serverTimestamp()
+            };
+
+            if (!vehicleData.plate || !vehicleData.ownerName) { showErrorModal("La placa y el nombre son obligatorios."); return; }
+            
+            DOMElements.submitBtn.disabled = true;
+            DOMElements.submitBtn.innerHTML = '<span class="lucide-icon animate-spin" data-lucide="loader-2"></span>';
+            renderIcons();
+
+            try {
+                const q = query(vehiclesCollectionRef, where("plate", "==", vehicleData.plate));
+                const querySnapshot = await getDocs(q);
+                if (!querySnapshot.empty) {
+                    showErrorModal(`El vehículo con placa ${vehicleData.plate} ya está adentro.`);
+                } else {
+                    await addDoc(vehiclesCollectionRef, vehicleData);
+                }
+            } catch (error) {
+                console.error("Error al añadir vehículo:", error);
+                showErrorModal("Ocurrió un error al registrar el vehículo.");
+            } finally {
+                resetForm();
+            }
+        }
+
+        async function handleRegisterExit(vehicle) {
+            const exitTime = new Date();
+            const entryTime = new Date(vehicle.entryTime.seconds * 1000);
+            const durationMs = exitTime - entryTime;
+            const durationMinutes = Math.max(1, Math.ceil(durationMs / (1000 * 60)));
+            
+            showExitConfirmation(vehicle, entryTime, exitTime);
+            
+            try {
+                await addDoc(historyCollectionRef, { ...vehicle, exitTime: Timestamp.fromDate(exitTime), durationMinutes });
+                const vehicleDocRef = doc(db, "parking-data/active/vehicles", vehicle.id);
+                await deleteDoc(vehicleDocRef);
+            } catch (error) {
+                console.error("Error al registrar salida:", error);
+                showErrorModal("No se pudo mover el vehículo al historial.");
+            }
+        }
+
+        // --- LÓGICA DE REPORTE ---
+        async function generateDailyReport() {
+            const today = new Date();
+            const startOfDay = new Date(today.setHours(0, 0, 0, 0));
+            const q = query(historyCollectionRef, where("exitTime", ">=", Timestamp.fromDate(startOfDay)));
+
+            const snapshot = await getDocs(q);
+            if (snapshot.empty) { showErrorModal("No hay salidas registradas hoy."); return; }
+            
+            const data = snapshot.docs.map(doc => {
+                const r = doc.data();
+                return {
+                    Placa: r.plate, Tipo: r.type, Conductor: r.ownerName, Celular: r.ownerPhone,
+                    Deja_Llaves: r.leavesKeys ? 'Sí' : 'No',
+                    Entrada: new Date(r.entryTime.seconds * 1000).toLocaleString('es-CO'),
+                    Salida: new Date(r.exitTime.seconds * 1000).toLocaleString('es-CO'),
+                    Novedades: r.observations
+                };
+            });
+            exportToCsv(`Reporte_${new Date().toISOString().split('T')[0]}.csv`, data);
+        }
+
+        function exportToCsv(filename, rows) {
+            const headers = Object.keys(rows[0]).join(',');
+            const csvContent = "data:text/csv;charset=utf-8," + headers + '\n' 
+                + rows.map(r => Object.values(r).map(v => `"${(v || '').toString().replace(/"/g, '""')}"`).join(',')).join('\n');
+            const link = document.createElement("a");
+            link.setAttribute("href", encodeURI(csvContent));
+            link.setAttribute("download", filename);
+            link.click();
+        }
+
+        // --- RENDERIZADO ---
+        function renderVehicles(vehicles) {
+            DOMElements.vehiclesList.innerHTML = '';
+            DOMElements.vehicleCount.textContent = vehicles.length;
+            DOMElements.emptyState.classList.toggle('hidden', vehicles.length === 0);
+            vehicles.sort((a, b) => a.entryTime?.seconds - b.entryTime?.seconds);
+            vehicles.forEach(vehicle => DOMElements.vehiclesList.appendChild(createVehicleCard(vehicle)));
+            renderIcons();
+        }
+
+        function createVehicleCard(vehicle) {
+            const card = document.createElement('div');
+            card.className = `p-4 rounded-xl shadow-md flex flex-col justify-between ${vehicle.type === 'car' ? 'bg-blue-50' : 'bg-orange-50'}`;
+            const entryTime = vehicle.entryTime ? new Date(vehicle.entryTime.seconds * 1000).toLocaleString('es-CO', {timeStyle: 'short', dateStyle: 'short'}) : '...';
+            
+            card.innerHTML = `
+                <div>
+                    <div class="flex justify-between items-start mb-3">
+                        <span class="font-bold text-xl ${vehicle.type === 'car' ? 'text-blue-800' : 'text-orange-800'}">${vehicle.plate}</span>
+                        <span class="text-xs font-semibold px-2 py-1 rounded-full ${vehicle.type === 'car' ? 'bg-blue-200 text-blue-800' : 'bg-orange-200 text-orange-800'}">${vehicle.type === 'car' ? 'Carro' : 'Moto'}</span>
+                    </div>
+                    <div class="text-sm text-gray-700 space-y-1 mb-3">
+                        <p><span class="lucide-icon text-gray-500" data-lucide="user" style="width:1em;height:1em;display:inline-block;vertical-align:-0.125em;"></span> ${vehicle.ownerName}</p>
+                        ${vehicle.ownerPhone ? `<p><span class="lucide-icon text-gray-500" data-lucide="phone" style="width:1em;height:1em;display:inline-block;vertical-align:-0.125em;"></span> ${vehicle.ownerPhone}</p>` : ''}
+                        <p><span class="lucide-icon text-gray-500" data-lucide="clock" style="width:1em;height:1em;display:inline-block;vertical-align:-0.125em;"></span> ${entryTime}</p>
+                    </div>
+                    ${vehicle.leavesKeys ? `
+                    <div class="bg-yellow-100 text-yellow-800 p-2 rounded-lg text-sm font-semibold flex items-center">
+                        <span class="lucide-icon" data-lucide="key-round"></span>&nbsp;LLAVES EN RECEPCIÓN
+                    </div>` : ''}
+                    ${vehicle.observations ? `
+                    <div class="bg-gray-100 p-3 rounded-lg text-sm space-y-2 mt-3">
+                        <p><span class="font-semibold">Novedades:</span> ${vehicle.observations}</p>
+                    </div>` : ''}
+                </div>
+                <button class="register-exit-btn mt-4 w-full bg-red-500 text-white font-bold py-2 px-4 rounded-lg flex items-center justify-center">
+                    <span class="lucide-icon" data-lucide="log-out"></span>&nbsp;Registrar Salida
+                </button>`;
+
+            card.querySelector('.register-exit-btn').addEventListener('click', () => handleRegisterExit(vehicle));
+            return card;
+        }
+        
+        function showExitConfirmation(vehicle, entry, exit) {
+            const content = `<div class="p-5 text-center"><div class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-green-100"><span class="lucide-icon" data-lucide="check" class="h-6 w-6 text-green-600"></span></div><h3 class="text-lg font-medium text-gray-900 mt-2">Salida Registrada para ${vehicle.plate}</h3><div class="text-left text-sm text-gray-600 space-y-2 border-t pt-3 my-4"><p><strong>Conductor:</strong> ${vehicle.ownerName}</p><p><strong>Hora de Salida:</strong> ${exit.toLocaleString('es-CO')}</p></div><button id="close-modal-btn" class="px-4 py-2 bg-blue-600 text-white rounded-md w-full">Cerrar</button></div>`;
+            showModal(content);
+        }
+
+        function resetForm() {
+            DOMElements.entryForm.reset();
+            DOMElements.submitBtn.disabled = false;
+            DOMElements.submitBtn.innerHTML = '<span class="lucide-icon" data-lucide="plus-circle"></span>&nbsp;Añadir Vehículo';
+            renderIcons();
+        }
+        
+        function renderIcons() {
+            // Asegurarse de que las librerías principales estén cargadas
+            if (!window.LucideReact || !window.React || !window.ReactDOM) {
+                // Si no están listas, esperar un poco y reintentar.
+                setTimeout(renderIcons, 100);
+                return;
+            }
+
+            const toPascalCase = (str) => str.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join('');
+            
+            document.querySelectorAll('.lucide-icon').forEach(elem => {
+                const iconName = toPascalCase(elem.getAttribute('data-lucide'));
+                const iconComponent = window.LucideReact[iconName];
+                
+                if (iconComponent) {
+                    const style = {};
+                    if(elem.style.width) style.width = elem.style.width;
+                    if(elem.style.height) style.height = elem.style.height;
+                    if(elem.style.display) style.display = elem.style.display;
+                    if(elem.style.verticalAlign) style.verticalAlign = elem.style.verticalAlign;
+                    
+                    const iconElement = window.React.createElement(iconComponent, { style });
+                    window.ReactDOM.render(iconElement, elem);
+                } else {
+                    console.warn(`Icono de Lucide no encontrado: ${iconName}`);
+                }
+            });
+        }
+        main();
+    </script>
+</body>
+</html>
